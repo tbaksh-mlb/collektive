@@ -1,3 +1,11 @@
+/*
+ * Copyright (c) 2025, Danilo Pianini, Nicolas Farabegoli, Elisa Tronetti,
+ * and all authors listed in the `build.gradle.kts` and the generated `pom.xml` file.
+ *
+ * This file is part of Collektive, and is distributed under the terms of the Apache License 2.0,
+ * as described in the LICENSE file in this project's repository's top directory.
+ */
+
 package it.unibo.collektive.backend.visitors
 
 import it.unibo.collektive.utils.common.isAssignableFrom
@@ -25,10 +33,9 @@ private class AggregateRefChildrenVisitor(
     // Search in each call if in its receiver or arguments there is the reference to
     // the aggregate context
     override fun visitCall(expression: IrCall, data: Nothing?) {
-        val aggregateContextRef =
-            expression
-                .receiverAndArgs()
-                .find { it.type.isAssignableFrom(aggregateContextClass.defaultType) }
+        val aggregateContextRef = expression
+            .receiverAndArgs()
+            .find { it.type.isAssignableFrom(aggregateContextClass.defaultType) }
         aggregateContextRef?.let { elements.add(it) } ?: super.visitCall(expression, data)
     }
 }

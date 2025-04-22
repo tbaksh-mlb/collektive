@@ -1,11 +1,21 @@
+/*
+ * Copyright (c) 2025, Danilo Pianini, Nicolas Farabegoli, Elisa Tronetti,
+ * and all authors listed in the `build.gradle.kts` and the generated `pom.xml` file.
+ *
+ * This file is part of Collektive, and is distributed under the terms of the Apache License 2.0,
+ * as described in the LICENSE file in this project's repository's top directory.
+ */
+
 @file:Suppress("ReturnCount")
 
 package it.unibo.collektive
 
 import it.unibo.collektive.backend.transformers.AggregateCallTransformer
 import it.unibo.collektive.utils.common.AggregateFunctionNames
+import it.unibo.collektive.utils.common.AggregateFunctionNames.AGGREGATE_CLASS_FQ_NAME
 import it.unibo.collektive.utils.common.AggregateFunctionNames.ALIGN_FUNCTION_NAME
 import it.unibo.collektive.utils.common.AggregateFunctionNames.DEALIGN_FUNCTION_NAME
+import it.unibo.collektive.utils.common.AggregateFunctionNames.FIELD_CLASS
 import it.unibo.collektive.utils.common.AggregateFunctionNames.PROJECT_FUNCTION
 import it.unibo.collektive.utils.logging.error
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -31,11 +41,11 @@ class AlignmentIrGenerationExtension(private val logger: MessageCollector) : IrG
         // Aggregate Context class that has the reference to the stack
         val aggregateClass =
             pluginContext.referenceClass(
-                ClassId.topLevel(FqName(AggregateFunctionNames.AGGREGATE_CLASS_FQ_NAME)),
-            )
-        if (aggregateClass == null) {
-            return logger.error("Unable to find the aggregate class")
-        }
+                ClassId.topLevel(FqName(AGGREGATE_CLASS_FQ_NAME)),
+            ) ?: return logger.error("Class $AGGREGATE_CLASS_FQ_NAME not found")
+
+        val fieldClass = pluginContext.referenceClass(ClassId.topLevel(FqName(FIELD_CLASS)))
+            ?: return logger.error("Class $FIELD_CLASS not found")
 
         val projectFunction =
             pluginContext
@@ -63,6 +73,7 @@ class AlignmentIrGenerationExtension(private val logger: MessageCollector) : IrG
                 pluginContext,
                 logger,
                 aggregateClass.owner,
+                fieldClass.owner,
                 alignRawFunction.owner,
                 dealignFunction.owner,
                 projectFunction.owner,

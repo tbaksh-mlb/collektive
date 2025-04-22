@@ -8,10 +8,15 @@
 
 package it.unibo.collektive.aggregate
 
+import it.unibo.collektive.aggregate.api.Aggregate
+
 /**
  * A field is a map of messages where the key is the [ID] of a node and [T] the associated value.
  */
 sealed interface Field<ID : Any, out T> {
+
+    val context: Aggregate<ID>
+
     /**
      * The [ID] of the local node.
      */
@@ -54,6 +59,12 @@ sealed interface Field<ID : Any, out T> {
      */
     fun <B, R> alignedMap(other: Field<ID, B>, transform: (ID, T, B) -> R): Field<ID, R> {
         // checkAligned(this, other)
+        check(other.neighborsCount == neighborsCount) {
+            "The two fields are not aligned: ${this.neighbors} vs ${other.neighbors}"
+        }
+        check(context == other.context) {
+            "The two fields are not in the same context: ${this.context} vs ${other.context}"
+        }
         return map { transform(it.id, it.value, other[it.id]) }
     }
 
@@ -62,6 +73,12 @@ sealed interface Field<ID : Any, out T> {
      */
     fun <B, C, R> alignedMap(f1: Field<ID, B>, f2: Field<ID, C>, transform: (ID, T, B, C) -> R): Field<ID, R> {
         // checkAligned(this, f1, f2)
+        check(f1.neighborsCount == neighborsCount && f2.neighborsCount == neighborsCount) {
+            "The three fields are not aligned: ${this.neighbors} vs ${f1.neighbors} vs ${f2.neighbors}"
+        }
+        check(context == f1.context && context == f2.context) {
+            "The three fields are not in the same context: ${this.context} vs ${f1.context} vs ${f2.context}"
+        }
         return map { (id, value) -> transform(id, value, f1[id], f2[id]) }
     }
 
@@ -107,7 +124,7 @@ sealed interface Field<ID : Any, out T> {
     /**
      * Map the field resulting in a new one where the value for the local and the neighbors is [singleton].
      */
-    fun <B> mapToConstant(singleton: B): Field<ID, B> = ConstantField(local.id, singleton, excludeSelf().keys)
+    fun <B> mapToConstant(singleton: B): Field<ID, B> = ConstantField(context, local.id, singleton, excludeSelf().keys)
 
     /**
      * Get the value associated with the [id].
@@ -153,6 +170,7 @@ sealed interface Field<ID : Any, out T> {
          * Build a field from a [localId], [localValue] and [others] neighbours values.
          */
         internal operator fun <ID : Any, T> invoke(
+            context: Aggregate<ID>,
             localId: ID,
             localValue: T,
             others: Map<ID, T> = emptyMap(),
@@ -164,9 +182,9 @@ sealed interface Field<ID : Any, out T> {
                     "as the local id is also present among the neighbors"
             }
             return when {
-                others.isEmpty() -> PointwiseField(localId, localValue)
-                others.values.all { it == localValue } -> ConstantField(localId, localValue, others.keys)
-                else -> ArrayBasedField(localId, localValue, others.map { it.toFieldEntry() })
+                others.isEmpty() -> PointwiseField(context, localId, localValue)
+                others.values.all { it == localValue } -> ConstantField(context, localId, localValue, others.keys)
+                else -> ArrayBasedField(context, localId, localValue, others.map { it.toFieldEntry() })
             }
         }
 
@@ -280,7 +298,10 @@ sealed interface Field<ID : Any, out T> {
     }
 }
 
-internal abstract class AbstractField<ID : Any, T>(override val local: FieldEntry<ID, T>) : Field<ID, T> {
+internal abstract class AbstractField<ID : Any, T>(
+    final override val context: Aggregate<ID>,
+    final override val local: FieldEntry<ID, T>,
+) : Field<ID, T> {
 
     @Deprecated("Use local.id instead", replaceWith = ReplaceWith("local.id"))
     override val localId: ID get() = local.id
@@ -288,7 +309,7 @@ internal abstract class AbstractField<ID : Any, T>(override val local: FieldEntr
     @Deprecated("Use local.value instead", replaceWith = ReplaceWith("local.value"))
     override val localValue: T get() = local.value
 
-    constructor(localID: ID, localValue: T) : this(FieldEntry(localID, localValue))
+    constructor(context: Aggregate<ID>, localID: ID, localValue: T) : this(context, FieldEntry(localID, localValue))
 
     private val asMap: Map<ID, T> by lazy {
         val result: Map<ID, T> = neighborsMap() + (local.id to local.value)
@@ -330,7 +351,7 @@ internal abstract class AbstractField<ID : Any, T>(override val local: FieldEntr
     }
 
     final override fun <B> map(transform: (FieldEntry<ID, T>) -> B): Field<ID, B> =
-        SequenceBasedField(local.id, transform(local), mapOthersAsSequence(transform))
+        SequenceBasedField(context, local.id, transform(local), mapOthersAsSequence(transform))
 
     protected abstract fun neighborsMap(): Map<ID, T>
 
@@ -351,8 +372,12 @@ internal abstract class AbstractField<ID : Any, T>(override val local: FieldEntr
     final override fun toString() = stringRepresentation
 }
 
-internal class ArrayBasedField<ID : Any, T>(localId: ID, localValue: T, private val others: List<FieldEntry<ID, T>>) :
-    AbstractField<ID, T>(localId, localValue) {
+internal class ArrayBasedField<ID : Any, T>(
+    context: Aggregate<ID>,
+    localId: ID, localValue: T,
+    private val others: List<FieldEntry<ID, T>>
+) :
+    AbstractField<ID, T>(context, localId, localValue) {
 
     override val neighborsCount: Int get() = others.size
     override val neighbors: Set<ID> by lazy {
@@ -386,10 +411,11 @@ internal class ArrayBasedField<ID : Any, T>(localId: ID, localValue: T, private 
 }
 
 internal class SequenceBasedField<ID : Any, T>(
+    context: Aggregate<ID>,
     localId: ID,
     localValue: T,
     private val others: Sequence<FieldEntry<ID, T>>,
-) : AbstractField<ID, T>(localId, localValue) {
+) : AbstractField<ID, T>(context, localId, localValue) {
 
     override val neighborsCount get() = neighbors.size
 
@@ -424,8 +450,9 @@ internal class SequenceBasedField<ID : Any, T>(
         }
 }
 
-internal class ConstantField<ID : Any, T>(localId: ID, localValue: T, override val neighbors: Set<ID>) :
-    AbstractField<ID, T>(localId, localValue) {
+internal class ConstantField<ID : Any, T>(    context: Aggregate<ID>,
+                                              localId: ID, localValue: T, override val neighbors: Set<ID>) :
+    AbstractField<ID, T>(context, localId, localValue) {
     override val neighborsCount: Int = neighbors.size
 
     override val neighborsValues: List<T> by lazy {
@@ -455,7 +482,8 @@ internal class ConstantField<ID : Any, T>(localId: ID, localValue: T, override v
         neighbors.asSequence().map { FieldEntry(checkNotLocal(it), local.value) } + local
 }
 
-internal class PointwiseField<ID : Any, T>(localId: ID, localValue: T) : AbstractField<ID, T>(localId, localValue) {
+internal class PointwiseField<ID : Any, T>(    context: Aggregate<ID>,
+                                               localId: ID, localValue: T) : AbstractField<ID, T>(context, localId, localValue) {
 
     override fun neighborsMap(): Map<ID, T> = emptyMap()
 

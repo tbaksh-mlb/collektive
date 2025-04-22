@@ -1,5 +1,14 @@
+/*
+ * Copyright (c) 2025, Danilo Pianini, Nicolas Farabegoli, Elisa Tronetti,
+ * and all authors listed in the `build.gradle.kts` and the generated `pom.xml` file.
+ *
+ * This file is part of Collektive, and is distributed under the terms of the Apache License 2.0,
+ * as described in the LICENSE file in this project's repository's top directory.
+ */
+
 package it.unibo.collektive.backend.transformers
 
+import it.unibo.collektive.utils.common.AggregateFunctionNames.AGGREGATE_API_PACKAGE
 import it.unibo.collektive.utils.common.isAssignableFrom
 import it.unibo.collektive.utils.stack.StackFunctionCall
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -8,6 +17,7 @@ import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 
 /**
@@ -19,18 +29,19 @@ class AggregateCallTransformer(
     private val pluginContext: IrPluginContext,
     private val logger: MessageCollector,
     private val aggregateClass: IrClass,
+    private val fieldClass: IrClass,
     private val alignRawFunction: IrFunction,
     private val dealignFunction: IrFunction,
     private val projectFunction: IrFunction,
 ) : IrElementTransformerVoid() {
-    private val aggregateContext = aggregateClass.defaultType
 
     override fun visitFunction(declaration: IrFunction): IrStatement {
-        val isAggregateFunction =
-            declaration.extensionReceiverParameter?.type?.isAssignableFrom(aggregateContext)
-                ?: declaration.dispatchReceiverParameter?.type?.isAssignableFrom(aggregateClass.defaultType)
-                ?: false
-        if (isAggregateFunction || hasAggregateInArguments(declaration)) {
+        val allowedClass = declaration.fqNameWhenAvailable.let {
+            it != fieldClass.fqNameWhenAvailable && it != aggregateClass.fqNameWhenAvailable
+        }
+        val inApiPackage = declaration.fqNameWhenAvailable?.asString()?.startsWith(AGGREGATE_API_PACKAGE) == true
+        val shouldAlign = allowedClass && !inApiPackage && declaration.isAggregate()
+        if (shouldAlign) {
             /*
              This transformation is needed to project field inside the `alignOn` function called directly by the user.
              This is made before the alignment transformation because of optimization reasons:
@@ -58,7 +69,11 @@ class AggregateCallTransformer(
         return super.visitFunction(declaration)
     }
 
-    private fun hasAggregateInArguments(declaration: IrFunction): Boolean = declaration.valueParameters.any {
-        it.type.isAssignableFrom(aggregateContext)
-    }
+    private fun IrFunction.isAggregate() =
+        listOf(aggregateClass, fieldClass).any { irClass ->
+            val type = irClass.defaultType
+            extensionReceiverParameter?.type?.isAssignableFrom(type)
+                ?: dispatchReceiverParameter?.type?.isAssignableFrom(type)
+                ?: valueParameters.any { it.type.isAssignableFrom(type) }
+        }
 }

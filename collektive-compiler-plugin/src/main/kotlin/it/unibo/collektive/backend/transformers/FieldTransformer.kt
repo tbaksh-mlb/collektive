@@ -8,9 +8,7 @@
 
 package it.unibo.collektive.backend.transformers
 
-import it.unibo.collektive.backend.visitors.collectAggregateReference
 import it.unibo.collektive.utils.common.AggregateFunctionNames
-import it.unibo.collektive.utils.common.isAssignableFrom
 import it.unibo.collektive.utils.logging.debug
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -21,10 +19,7 @@ import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrElseBranch
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
-import org.jetbrains.kotlin.ir.types.classFqName
-import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.receiverAndArgs
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.name.Name
 
@@ -39,6 +34,7 @@ class FieldTransformer(
     private val aggregateClass: IrClass,
     private val projectFunction: IrFunction,
 ) : IrElementTransformerVoid() {
+
     @OptIn(UnsafeDuringIrConstructionAPI::class)
     override fun visitCall(expression: IrCall): IrExpression {
         val symbolName = expression.symbol.owner.name
@@ -46,46 +42,22 @@ class FieldTransformer(
         val alignedOnIdentifier = Name.identifier(AggregateFunctionNames.ALIGNED_ON_FUNCTION_NAME)
         if (symbolName == alignRawIdentifier || symbolName == alignedOnIdentifier) {
             logger.debug("Found alignedRaw function call: ${expression.dumpKotlinLike()}")
-            val contextReference =
-                expression
-                    .receiverAndArgs()
-                    .find { it.type.isAssignableFrom(aggregateClass.defaultType) }
-                    ?: collectAggregateReference(aggregateClass, expression.symbol.owner)
-            contextReference?.let {
-                // If the expression contains a lambda, this recursion is necessary to visit the children
-                expression.transformChildren(this, null)
-                return expression.transform(
-                    FieldProjectionTransformer(pluginContext, projectFunction, it),
-                    null,
-                )
-            }
+            // If the expression contains a lambda, this recursion is necessary to visit the children
+            expression.transformChildren(this, null)
+            return expression.transform(
+                FieldProjectionTransformer(pluginContext, projectFunction),
+                null,
+            )
         }
         return super.visitCall(expression)
     }
 
-    override fun visitBranch(branch: IrBranch): IrBranch {
-        val contextReference = collectAggregateReference(aggregateClass, branch.result)
-        contextReference?.let {
-            logger.debug("Found AggregateContext reference in branch: ${it.type.classFqName}")
-            branch.result.transform(this, null)
-            return branch.transform(
-                FieldProjectionTransformer(pluginContext, projectFunction, it),
-                null,
-            )
-        }
-        return super.visitBranch(branch)
-    }
+    override fun visitBranch(branch: IrBranch): IrBranch = visitAnyBranch(branch){ transform(it, null) }
 
-    override fun visitElseBranch(branch: IrElseBranch): IrElseBranch {
-        val contextReference = collectAggregateReference(aggregateClass, branch.result)
-        contextReference?.let {
-            logger.debug("Found AggregateContext reference in else branch: ${it.type.classFqName}")
-            branch.result.transform(this, null)
-            return branch.transform(
-                FieldProjectionTransformer(pluginContext, projectFunction, it),
-                null,
-            )
-        }
-        return super.visitElseBranch(branch)
+    override fun visitElseBranch(branch: IrElseBranch): IrElseBranch = visitAnyBranch(branch) { transform(it, null) }
+
+    private inline fun <reified B: IrBranch> visitAnyBranch(branch: B, typedTransform: B.(FieldProjectionTransformer) -> B): B {
+        branch.result.transform(this, null)
+        return branch.typedTransform(FieldProjectionTransformer(pluginContext, projectFunction))
     }
 }

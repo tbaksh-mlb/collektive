@@ -27,6 +27,11 @@ object AggregateFunctionNames {
     val AGGREGATE_CLASS_FQ_NAME = checkNotNull(Aggregate::class.qualifiedName)
 
     /**
+     * The package name of the aggregate api.
+     */
+    val AGGREGATE_API_PACKAGE = AGGREGATE_CLASS_FQ_NAME.substringBeforeLast('.')
+
+    /**
      * The simple name of the function that is used to align a block.
      */
     const val ALIGNED_ON_FUNCTION_NAME = "alignedOn"
