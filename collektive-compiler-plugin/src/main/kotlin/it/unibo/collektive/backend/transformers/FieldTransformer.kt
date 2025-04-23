@@ -9,10 +9,9 @@
 package it.unibo.collektive.backend.transformers
 
 import it.unibo.collektive.utils.common.AggregateFunctionNames
-import it.unibo.collektive.utils.logging.debug
+import it.unibo.collektive.utils.logging.warn
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
-import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.expressions.IrBranch
 import org.jetbrains.kotlin.ir.expressions.IrCall
@@ -31,7 +30,6 @@ import org.jetbrains.kotlin.name.Name
 class FieldTransformer(
     private val pluginContext: IrPluginContext,
     private val logger: MessageCollector,
-    private val aggregateClass: IrClass,
     private val projectFunction: IrFunction,
 ) : IrElementTransformerVoid() {
 
@@ -41,11 +39,11 @@ class FieldTransformer(
         val alignRawIdentifier = Name.identifier(AggregateFunctionNames.ALIGN_FUNCTION_NAME)
         val alignedOnIdentifier = Name.identifier(AggregateFunctionNames.ALIGNED_ON_FUNCTION_NAME)
         if (symbolName == alignRawIdentifier || symbolName == alignedOnIdentifier) {
-            logger.debug("Found alignedRaw function call: ${expression.dumpKotlinLike()}")
+            logger.warn("Found alignedRaw function call: ${expression.dumpKotlinLike()}")
             // If the expression contains a lambda, this recursion is necessary to visit the children
             expression.transformChildren(this, null)
             return expression.transform(
-                FieldProjectionTransformer(pluginContext, projectFunction),
+                FieldProjectionTransformer(logger, pluginContext, projectFunction),
                 null,
             )
         }
@@ -57,7 +55,9 @@ class FieldTransformer(
     override fun visitElseBranch(branch: IrElseBranch): IrElseBranch = visitAnyBranch(branch) { transform(it, null) }
 
     private inline fun <reified B: IrBranch> visitAnyBranch(branch: B, typedTransform: B.(FieldProjectionTransformer) -> B): B {
+        logger.warn(branch.dumpKotlinLike() + " is a branch")
         branch.result.transform(this, null)
-        return branch.typedTransform(FieldProjectionTransformer(pluginContext, projectFunction))
+        branch.result.transform(FieldProjectionTransformer(logger, pluginContext, projectFunction), null)
+        return branch
     }
 }

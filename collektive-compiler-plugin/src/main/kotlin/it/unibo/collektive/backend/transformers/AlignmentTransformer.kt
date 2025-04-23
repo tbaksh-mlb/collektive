@@ -8,16 +8,15 @@
 
 package it.unibo.collektive.backend.transformers
 
-import it.unibo.collektive.backend.visitors.collectAggregateReference
 import it.unibo.collektive.utils.common.AggregateFunctionNames.ALIGN_FUNCTION_NAME
 import it.unibo.collektive.utils.common.AggregateFunctionNames.DEALIGN_FUNCTION_NAME
 import it.unibo.collektive.utils.common.findAggregateReference
 import it.unibo.collektive.utils.common.getAlignmentToken
 import it.unibo.collektive.utils.common.irStatement
-import it.unibo.collektive.utils.common.isAssignableFrom
 import it.unibo.collektive.utils.common.simpleFunctionName
 import it.unibo.collektive.utils.stack.StackFunctionCall
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.createTmpVariable
@@ -36,8 +35,6 @@ import org.jetbrains.kotlin.ir.expressions.IrElseBranch
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.putArgument
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
-import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.receiverAndArgs
 import org.jetbrains.kotlin.ir.visitors.IrTransformer
 
 /**
@@ -47,20 +44,18 @@ import org.jetbrains.kotlin.ir.visitors.IrTransformer
  */
 class AlignmentTransformer(
     private val pluginContext: IrPluginContext,
-    private val aggregateContextClass: IrClass,
+    private val aggregateClass: IrClass,
+    private val fieldClass: IrClass,
     private val functionToAlign: IrFunction,
     private val alignRawFunction: IrFunction,
     private val dealignFunction: IrFunction,
+    private val logger: MessageCollector,
 ) : IrTransformer<StackFunctionCall>() {
     private var alignedFunctions = emptyMap<String, Int>()
 
     @OptIn(UnsafeDuringIrConstructionAPI::class)
     override fun visitCall(expression: IrCall, data: StackFunctionCall): IrElement {
-        val contextReference =
-            expression
-                .receiverAndArgs()
-                .find { it.type.isAssignableFrom(aggregateContextClass.defaultType) }
-                ?: collectAggregateReference(aggregateContextClass, expression.symbol.owner)
+        val contextReference = findAggregateReference(pluginContext, aggregateClass, fieldClass, expression, logger)
 
         val alignmentToken = expression.getAlignmentToken()
         // If the context is null, this means that the function is not an aggregate function
@@ -103,7 +98,7 @@ class AlignmentTransformer(
     }
 
     private fun IrBranch.generateBranchAlignmentCode(condition: Boolean) {
-        result.findAggregateReference(aggregateContextClass)?.let {
+        result.findAggregateReference(pluginContext, aggregateClass, fieldClass, result, logger)?.let {
             result = generateAlignmentCode(it, functionToAlign, result) { irBoolean(condition) }
         }
     }

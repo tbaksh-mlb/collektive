@@ -139,7 +139,14 @@ publishOnCentral {
 }
 
 val importDsl by tasks.registering(Copy::class) {
-    listOf("Aggregate", "DataSharingMethod", "Field", "FieldEntry", "YieldSupport").forEach { file ->
+    listOf(
+        "Aggregate",
+        "DataSharingMethod",
+        "Field",
+        "FieldEntry",
+        "NoAlign",
+        "YieldSupport",
+    ).forEach { file ->
         from(
             rootProject.rootDir.resolve("../collektive-dsl/src/commonMain/kotlin/").walkTopDown().single {
                 it.name == "$file.kt"

@@ -9,7 +9,9 @@
 package it.unibo.collektive.backend.transformers
 
 import it.unibo.collektive.utils.common.AggregateFunctionNames.FIELD_CLASS
+import it.unibo.collektive.utils.logging.warn
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.ir.builders.IrSingleStatementBuilder
 import org.jetbrains.kotlin.ir.builders.Scope
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -18,16 +20,19 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.expressions.putArgument
 import org.jetbrains.kotlin.ir.types.classFqName
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.name.FqName
 
 internal class FieldProjectionTransformer(
+    private val logger: MessageCollector,
     private val pluginContext: IrPluginContext,
     private val projectFunction: IrFunction,
 //    private val aggregateReference: IrExpression,
 ) : IrElementTransformerVoid() {
     override fun visitGetValue(expression: IrGetValue): IrExpression {
         if (expression.type.classFqName == FqName(FIELD_CLASS)) {
+            logger.warn("This expression returns a field: ${expression.dumpKotlinLike()}")
             return wrapInProjectFunction(expression) //, aggregateReference)
         }
         return super.visitGetValue(expression)
@@ -39,6 +44,7 @@ internal class FieldProjectionTransformer(
         IrSingleStatementBuilder(pluginContext, Scope(fieldExpression.symbol), fieldExpression.startOffset, fieldExpression.endOffset)
         .irCall(projectFunction).apply {
             // Set the return type
+            logger.warn("Projecting: ${fieldExpression.dumpKotlinLike()}")
             this.type = fieldExpression.type
             // Set generics type of the `alignOn` function
 //            putTypeArgument(0, fieldExpression.type.)

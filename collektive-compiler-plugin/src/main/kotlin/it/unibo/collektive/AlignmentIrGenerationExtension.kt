@@ -11,7 +11,6 @@
 package it.unibo.collektive
 
 import it.unibo.collektive.backend.transformers.AggregateCallTransformer
-import it.unibo.collektive.utils.common.AggregateFunctionNames
 import it.unibo.collektive.utils.common.AggregateFunctionNames.AGGREGATE_CLASS_FQ_NAME
 import it.unibo.collektive.utils.common.AggregateFunctionNames.ALIGN_FUNCTION_NAME
 import it.unibo.collektive.utils.common.AggregateFunctionNames.DEALIGN_FUNCTION_NAME
@@ -37,6 +36,7 @@ import org.jetbrains.kotlin.name.Name
  */
 @OptIn(UnsafeDuringIrConstructionAPI::class)
 class AlignmentIrGenerationExtension(private val logger: MessageCollector) : IrGenerationExtension {
+
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         // Aggregate Context class that has the reference to the stack
         val aggregateClass =

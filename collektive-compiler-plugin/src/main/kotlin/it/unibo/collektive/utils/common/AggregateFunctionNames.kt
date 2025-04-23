@@ -10,6 +10,7 @@ package it.unibo.collektive.utils.common
 
 import it.unibo.collektive.aggregate.Field
 import it.unibo.collektive.aggregate.api.Aggregate
+import it.unibo.collektive.aggregate.api.NoAlign
 import it.unibo.collektive.aggregate.api.YieldingContext
 
 /**
@@ -67,14 +68,14 @@ object AggregateFunctionNames {
     val FIELD_CLASS = checkNotNull(Field::class.qualifiedName)
 
     /**
-     * The name of the function that is used to project the fields.
+     * The FQ name of the `evolve` function.
      */
-    const val PROJECT_FUNCTION = "project"
+    val EVOLVE_FUNCTION_FQ_NAME = "$AGGREGATE_CLASS_FQ_NAME.evolve"
 
     /**
-     * The FQ name of the `neighboring` function.
+     * The FQ name of the `evolving` function.
      */
-    const val NEIGHBORING_FUNCTION_FQ_NAME = "it.unibo.collektive.aggregate.api.neighboring"
+    val EVOLVING_FUNCTION_FQ_NAME = "${AGGREGATE_CLASS_FQ_NAME}.evolving"
 
     /**
      * The FQ name of the `exchange` function.
@@ -82,29 +83,31 @@ object AggregateFunctionNames {
     const val EXCHANGE_FUNCTION_FQ_NAME = "it.unibo.collektive.aggregate.api.exchange"
 
     /**
-     * The FQ name of the `share` function.
-     */
-    const val SHARE_FUNCTION_FQ_NAME = "it.unibo.collektive.aggregate.api.share"
-
-    /**
-     * The FQ name of the `evolve` function.
-     */
-    val EVOLVE_FUNCTION_FQ_NAME = "$AGGREGATE_CLASS_FQ_NAME.evolve"
-
-    /**
      * The FQ name of the `exchanging` function.
      */
     const val EXCHANGING_FUNCTION_FQ_NAME = "it.unibo.collektive.aggregate.api.exchanging"
 
     /**
+     * The FQ name of the `neighboring` function.
+     */
+    const val NEIGHBORING_FUNCTION_FQ_NAME = "it.unibo.collektive.aggregate.api.neighboring"
+
+    val NO_ALIGN_ANNOTATION_FQ_NAME = checkNotNull(NoAlign::class.qualifiedName)
+
+    /**
+     * The name of the function that is used to project the fields.
+     */
+    const val PROJECT_FUNCTION = "project"
+
+    /**
+     * The FQ name of the `share` function.
+     */
+    const val SHARE_FUNCTION_FQ_NAME = "it.unibo.collektive.aggregate.api.share"
+
+    /**
      * The FQ name of the `sharing` function.
      */
     const val SHARING_FUNCTION_FQ_NAME = "it.unibo.collektive.aggregate.api.sharing"
-
-    /**
-     * The FQ name of the `evolving` function.
-     */
-    val EVOLVING_FUNCTION_FQ_NAME = "${AGGREGATE_CLASS_FQ_NAME}.evolving"
 
     /**
      * The FQ name of the `yielding` function.

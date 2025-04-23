@@ -8,16 +8,15 @@
 
 package it.unibo.collektive.backend.transformers
 
-import it.unibo.collektive.utils.common.AggregateFunctionNames.AGGREGATE_API_PACKAGE
-import it.unibo.collektive.utils.common.isAssignableFrom
+import it.unibo.collektive.utils.common.isAggregate
+import it.unibo.collektive.utils.logging.info
 import it.unibo.collektive.utils.stack.StackFunctionCall
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 
 /**
@@ -36,12 +35,8 @@ class AggregateCallTransformer(
 ) : IrElementTransformerVoid() {
 
     override fun visitFunction(declaration: IrFunction): IrStatement {
-        val allowedClass = declaration.fqNameWhenAvailable.let {
-            it != fieldClass.fqNameWhenAvailable && it != aggregateClass.fqNameWhenAvailable
-        }
-        val inApiPackage = declaration.fqNameWhenAvailable?.asString()?.startsWith(AGGREGATE_API_PACKAGE) == true
-        val shouldAlign = allowedClass && !inApiPackage && declaration.isAggregate()
-        if (shouldAlign) {
+        if (declaration.isAggregate(aggregateClass, fieldClass, logger)) {
+            logger.info(declaration.dumpKotlinLike() + " is an aggregate function")
             /*
              This transformation is needed to project field inside the `alignOn` function called directly by the user.
              This is made before the alignment transformation because of optimization reasons:
@@ -49,7 +44,7 @@ class AggregateCallTransformer(
              we made a projection, which is not necessary.
              */
             declaration.transformChildren(
-                FieldTransformer(pluginContext, logger, aggregateClass, projectFunction),
+                FieldTransformer(pluginContext, logger, projectFunction),
                 null,
             )
             /*
@@ -59,9 +54,11 @@ class AggregateCallTransformer(
                 AlignmentTransformer(
                     pluginContext,
                     aggregateClass,
+                    fieldClass,
                     declaration,
                     alignRawFunction,
                     dealignFunction,
+                    logger
                 ),
                 StackFunctionCall(),
             )
@@ -69,11 +66,5 @@ class AggregateCallTransformer(
         return super.visitFunction(declaration)
     }
 
-    private fun IrFunction.isAggregate() =
-        listOf(aggregateClass, fieldClass).any { irClass ->
-            val type = irClass.defaultType
-            extensionReceiverParameter?.type?.isAssignableFrom(type)
-                ?: dispatchReceiverParameter?.type?.isAssignableFrom(type)
-                ?: valueParameters.any { it.type.isAssignableFrom(type) }
-        }
 }
+

@@ -10,6 +10,7 @@ package it.unibo.collektive.aggregate.api.impl
 
 import it.unibo.collektive.aggregate.Field
 import it.unibo.collektive.aggregate.api.DelicateCollektiveApi
+import it.unibo.collektive.aggregate.api.NoAlign
 import it.unibo.collektive.aggregate.api.neighborhood
 
 /**
@@ -25,6 +26,7 @@ import it.unibo.collektive.aggregate.api.neighborhood
  * break sooner or later.
  *
  */
+@NoAlign
 @DelicateCollektiveApi
 fun <ID : Any, T> project(field: Field<ID, T>): Field<ID, T> {
     // Equivalent to `mapNeighborhood { field[it] }`,

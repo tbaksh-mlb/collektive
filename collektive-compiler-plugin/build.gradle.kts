@@ -124,6 +124,7 @@ val importDsl by tasks.registering(Copy::class) {
         "DataSharingMethod",
         "Field",
         "FieldEntry",
+        "NoAlign",
         "YieldSupport",
     ).forEach { file ->
         from(

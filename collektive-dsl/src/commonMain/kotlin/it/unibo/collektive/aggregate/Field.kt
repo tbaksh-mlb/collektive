@@ -6,9 +6,12 @@
  * as described in the LICENSE file in this project's repository's top directory.
  */
 
+@file:NoAlign
+
 package it.unibo.collektive.aggregate
 
 import it.unibo.collektive.aggregate.api.Aggregate
+import it.unibo.collektive.aggregate.api.NoAlign
 
 /**
  * A field is a map of messages where the key is the [ID] of a node and [T] the associated value.
@@ -58,13 +61,7 @@ sealed interface Field<ID : Any, out T> {
      * Combines this field with another (aligned) one considering the [ID] when combining the values.
      */
     fun <B, R> alignedMap(other: Field<ID, B>, transform: (ID, T, B) -> R): Field<ID, R> {
-        // checkAligned(this, other)
-        check(other.neighborsCount == neighborsCount) {
-            "The two fields are not aligned: ${this.neighbors} vs ${other.neighbors}"
-        }
-        check(context == other.context) {
-            "The two fields are not in the same context: ${this.context} vs ${other.context}"
-        }
+        checkAligned(this, other)
         return map { transform(it.id, it.value, other[it.id]) }
     }
 
@@ -72,13 +69,7 @@ sealed interface Field<ID : Any, out T> {
      * Combines this field with other two (aligned) fields based on the [ID]s when.
      */
     fun <B, C, R> alignedMap(f1: Field<ID, B>, f2: Field<ID, C>, transform: (ID, T, B, C) -> R): Field<ID, R> {
-        // checkAligned(this, f1, f2)
-        check(f1.neighborsCount == neighborsCount && f2.neighborsCount == neighborsCount) {
-            "The three fields are not aligned: ${this.neighbors} vs ${f1.neighbors} vs ${f2.neighbors}"
-        }
-        check(context == f1.context && context == f2.context) {
-            "The three fields are not in the same context: ${this.context} vs ${f1.context} vs ${f2.context}"
-        }
+        checkAligned(this, f1, f2)
         return map { (id, value) -> transform(id, value, f1[id], f2[id]) }
     }
 
@@ -151,7 +142,7 @@ sealed interface Field<ID : Any, out T> {
         /**
          * Check if two or more fields are aligned, throwing an IllegalStateException otherwise.
          */
-        fun checkAligned(field1: Field<*, *>, field2: Field<*, *>, vararg fields: Field<*, *>) {
+            fun checkAligned(field1: Field<*, *>, field2: Field<*, *>, vararg fields: Field<*, *>) {
             val ids: Collection<Any?> = field1.neighbors
             sequenceOf(field2, *fields).map { it.neighbors }.forEach {
                 check(it.size == ids.size && it.containsAll(ids)) {
@@ -169,7 +160,7 @@ sealed interface Field<ID : Any, out T> {
         /**
          * Build a field from a [localId], [localValue] and [others] neighbours values.
          */
-        internal operator fun <ID : Any, T> invoke(
+            internal operator fun <ID : Any, T> invoke(
             context: Aggregate<ID>,
             localId: ID,
             localValue: T,
@@ -195,7 +186,7 @@ sealed interface Field<ID : Any, out T> {
          */
         @Deprecated("Use the standard library version")
         @Suppress("DEPRECATION")
-        inline fun <ID : Any, T> Field<ID, T>.hood(default: T, crossinline reduce: (T, T) -> T): T =
+            inline fun <ID : Any, T> Field<ID, T>.hood(default: T, crossinline reduce: (T, T) -> T): T =
             hoodWithId(default) { (_, accumulator), (id, value) -> id to reduce(accumulator, value) }
 
         /**
@@ -210,7 +201,7 @@ sealed interface Field<ID : Any, out T> {
          */
         @Deprecated("Use the standard library version")
         @Suppress("DEPRECATION")
-        inline fun <ID : Any, T> Field<ID, T>.hoodWithId(
+            inline fun <ID : Any, T> Field<ID, T>.hoodWithId(
             default: T,
             crossinline reduce: (Pair<ID, T>, Pair<ID, T>) -> Pair<ID, T>,
         ): T = hoodWithId(default, reduce) { second }
@@ -224,7 +215,7 @@ sealed interface Field<ID : Any, out T> {
          */
         @Deprecated("Use the standard library version")
         @Suppress("DEPRECATION")
-        inline fun <ID : Any, T, R> Field<ID, T>.hoodWithId(
+            inline fun <ID : Any, T, R> Field<ID, T>.hoodWithId(
             default: R,
             crossinline reduce: (Pair<ID, T>, Pair<ID, T>) -> Pair<ID, T>,
             crossinline select: Pair<ID, T>.() -> R,
@@ -239,7 +230,7 @@ sealed interface Field<ID : Any, out T> {
          * The local value is not considered.
          */
         @Deprecated("Use the standard library version")
-        inline fun <ID : Any, T, I, R> Field<ID, T>.hoodWithId(
+            inline fun <ID : Any, T, I, R> Field<ID, T>.hoodWithId(
             default: R,
             crossinline transform: (ID, T) -> I,
             crossinline reduce: (I, I) -> I,
@@ -264,7 +255,7 @@ sealed interface Field<ID : Any, out T> {
          */
         @Suppress("DEPRECATION")
         @Deprecated("Use the standard library version")
-        inline fun <ID : Any, T> Field<ID, T>.hoodWithId(default: T, crossinline transform: (T, ID, T) -> T): T =
+            inline fun <ID : Any, T> Field<ID, T>.hoodWithId(default: T, crossinline transform: (T, ID, T) -> T): T =
             hoodWithId(default) { (_, accumulator), (id, value) -> id to transform(accumulator, id, value) }
 
         /**
@@ -279,7 +270,7 @@ sealed interface Field<ID : Any, out T> {
                 "it.unibo.collektive.stdlib.fields.foldValues",
             ),
         )
-        inline fun <ID : Any, T, R> Field<ID, T>.fold(initial: R, crossinline transform: (R, T) -> R): R =
+            inline fun <ID : Any, T, R> Field<ID, T>.fold(initial: R, crossinline transform: (R, T) -> R): R =
             foldWithId(initial) { accumulator, _, value -> transform(accumulator, value) }
 
         /**
@@ -288,7 +279,7 @@ sealed interface Field<ID : Any, out T> {
          * The local value of the field is not considered.
          */
         @Deprecated("Use the standard library version")
-        inline fun <ID : Any, T, R> Field<ID, T>.foldWithId(initial: R, crossinline transform: (R, ID, T) -> R): R {
+            inline fun <ID : Any, T, R> Field<ID, T>.foldWithId(initial: R, crossinline transform: (R, ID, T) -> R): R {
             var accumulator = initial
             for (entry in excludeSelf()) {
                 accumulator = transform(accumulator, entry.key, entry.value)
@@ -502,6 +493,7 @@ internal class PointwiseField<ID : Any, T>(    context: Aggregate<ID>,
     override fun asSequence(): Sequence<FieldEntry<ID, T>> = sequenceOf(FieldEntry(local.id, local.value))
 }
 
+@NoAlign
 private fun <ID : Any> Field<ID, *>.checkNotLocal(id: ID): ID {
     check(id != local.id) {
         "Local value $id is both local and neighboring. This is a bug in ${this::class.simpleName}"
