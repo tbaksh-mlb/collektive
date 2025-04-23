@@ -9,7 +9,7 @@
 package it.unibo.collektive.backend.visitors
 
 import it.unibo.collektive.utils.common.isAssignableFrom
-import it.unibo.collektive.utils.logging.warn
+import it.unibo.collektive.utils.logging.info
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.IrSingleStatementBuilder
@@ -62,13 +62,12 @@ class AggregateRefChildrenVisitor(
                             irCall(getContextSymbol).apply {
                                 this.type = aggregateClass.defaultType
                                 dispatchReceiver = fieldExpression
-                                extensionReceiver = fieldExpression
                             }
                         }
                 }
         if (fromField) {
-            logger.warn("Found aggregate context reference in field: ${expression.dumpKotlinLike()}")
-            logger.warn("Context is: $fromField")
+            logger.info("Found aggregate context reference in field: ${expression.dumpKotlinLike()}")
+            logger.info("Context is: ${aggregateContextRef?.dumpKotlinLike()}")
         }
         aggregateContextRef?.let { elements.add(it) } ?: super.visitCall(expression, data)
     }

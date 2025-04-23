@@ -55,7 +55,7 @@ class AlignmentTransformer(
 
     @OptIn(UnsafeDuringIrConstructionAPI::class)
     override fun visitCall(expression: IrCall, data: StackFunctionCall): IrElement {
-        val contextReference = findAggregateReference(pluginContext, aggregateClass, fieldClass, expression, logger)
+        val contextReference = expression.findAggregateReference(pluginContext, aggregateClass, fieldClass, logger)
 
         val alignmentToken = expression.getAlignmentToken()
         // If the context is null, this means that the function is not an aggregate function
@@ -98,7 +98,7 @@ class AlignmentTransformer(
     }
 
     private fun IrBranch.generateBranchAlignmentCode(condition: Boolean) {
-        result.findAggregateReference(pluginContext, aggregateClass, fieldClass, result, logger)?.let {
+        result.findAggregateReference(pluginContext, aggregateClass, fieldClass, logger)?.let {
             result = generateAlignmentCode(it, functionToAlign, result) { irBoolean(condition) }
         }
     }

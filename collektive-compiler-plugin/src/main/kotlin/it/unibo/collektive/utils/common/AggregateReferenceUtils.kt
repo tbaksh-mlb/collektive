@@ -18,46 +18,39 @@ import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.declarations.IrVariable
-import org.jetbrains.kotlin.ir.expressions.IrBlock
-import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrGetValue
-import org.jetbrains.kotlin.ir.expressions.IrTypeOperatorCall
-import org.jetbrains.kotlin.ir.expressions.IrWhen
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.parents
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
-private fun IrBlock.findAggregateReference(pluginContext: IrPluginContext, aggregateClass: IrClass, fieldClass: IrClass, logger: MessageCollector): IrExpression? =
-    statements.firstNotNullOfOrNull {
-        when (it) {
-            is IrCall ->
-                findAggregateReference(pluginContext, aggregateClass, fieldClass, it, logger)
-                    ?: findAggregateReference(pluginContext, aggregateClass, fieldClass, it.symbol.owner, logger)
-            is IrVariable -> findAggregateReference(pluginContext, aggregateClass, fieldClass, it, logger)
-            is IrTypeOperatorCall -> findAggregateReference(pluginContext, aggregateClass, fieldClass, it, logger)
-            is IrWhen -> findAggregateReference(pluginContext, aggregateClass, fieldClass, it, logger)
-            else -> null // collectAggregateReference(aggregateContextClass, it)
-        }
-    }
-
-@OptIn(UnsafeDuringIrConstructionAPI::class)
-private fun IrExpression.findAggregateReference(
-    pluginContext: IrPluginContext,
-    aggregateContextClass: IrClass,
-    fieldClass: IrClass,
-    logger: MessageCollector
-): IrExpression? = when (this) {
-    is IrBlock -> findAggregateReference(pluginContext, aggregateContextClass, fieldClass, logger)
-    is IrGetValue ->
-        findAggregateReference(pluginContext, aggregateContextClass, fieldClass, this, logger)
-            ?: findAggregateReference(pluginContext, aggregateContextClass, fieldClass, symbol.owner, logger)
-    else -> findAggregateReference(pluginContext, aggregateContextClass, fieldClass, this, logger)
-}
-
+//@OptIn(UnsafeDuringIrConstructionAPI::class)
+//private fun IrBlock.findAggregateReference(pluginContext: IrPluginContext, aggregateClass: IrClass, fieldClass: IrClass, logger: MessageCollector): IrExpression? =
+//    statements.firstNotNullOfOrNull {
+//        when (it) {
+//            is IrCall ->
+//                findAggregateReference(pluginContext, aggregateClass, fieldClass, it, logger)
+//                    ?: findAggregateReference(pluginContext, aggregateClass, fieldClass, it.symbol.owner, logger)
+//            is IrVariable -> findAggregateReference(pluginContext, aggregateClass, fieldClass, it, logger)
+//            is IrTypeOperatorCall -> findAggregateReference(pluginContext, aggregateClass, fieldClass, it, logger)
+//            is IrWhen -> findAggregateReference(pluginContext, aggregateClass, fieldClass, it, logger)
+//            else -> null // collectAggregateReference(aggregateContextClass, it)
+//        }
+//    }
+//
+//@OptIn(UnsafeDuringIrConstructionAPI::class)
+//private fun IrExpression.findAggregateReference(
+//    pluginContext: IrPluginContext,
+//    aggregateContextClass: IrClass,
+//    fieldClass: IrClass,
+//    logger: MessageCollector
+//): IrExpression? = when (this) {
+//    is IrBlock -> findAggregateReference(pluginContext, aggregateContextClass, fieldClass, logger)
+//    is IrGetValue ->
+//        findAggregateReference(pluginContext, aggregateContextClass, fieldClass, this, logger)
+//            ?: findAggregateReference(pluginContext, aggregateContextClass, fieldClass, symbol.owner, logger)
+//    else -> findAggregateReference(pluginContext, aggregateContextClass, fieldClass, this, logger)
+//}
 
 /**
  * Retrieve the aggregate context reference by looking in all the function call in the element found.
