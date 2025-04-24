@@ -9,7 +9,7 @@
 package it.unibo.collektive.backend.transformers
 
 import it.unibo.collektive.utils.common.AggregateFunctionNames
-import it.unibo.collektive.utils.logging.warn
+import it.unibo.collektive.utils.logging.info
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -39,8 +39,9 @@ class ProjectionTransformer(
         val alignRawIdentifier = Name.identifier(AggregateFunctionNames.ALIGN_FUNCTION_NAME)
         val alignedOnIdentifier = Name.identifier(AggregateFunctionNames.ALIGNED_ON_FUNCTION_NAME)
         if (symbolName == alignRawIdentifier || symbolName == alignedOnIdentifier) {
-            logger.warn("Found alignedRaw function call: ${expression.dumpKotlinLike()}")
-            // If the expression contains a lambda, this recursion is necessary to visit the children
+            // alignedOn call: the fields need projection
+            logger.info("Found alignedRaw function call: ${expression.dumpKotlinLike()}")
+            // If the expression contains a lambda, this recursion is necessary to transform the children
             expression.transformChildren(this, null)
             return expression.transform(
                 ProjectFieldOnAccessTransformer(logger, pluginContext, projectFunction),
@@ -50,15 +51,11 @@ class ProjectionTransformer(
         return super.visitCall(expression)
     }
 
-    override fun visitBranch(branch: IrBranch): IrBranch = visitAnyBranch(branch) { transform(it, null) }
+    override fun visitBranch(branch: IrBranch): IrBranch = visitAnyBranch(branch)
 
-    override fun visitElseBranch(branch: IrElseBranch): IrElseBranch = visitAnyBranch(branch) { transform(it, null) }
+    override fun visitElseBranch(branch: IrElseBranch): IrElseBranch = visitAnyBranch(branch)
 
-    private inline fun <reified B : IrBranch> visitAnyBranch(
-        branch: B,
-        typedTransform: B.(ProjectFieldOnAccessTransformer) -> B,
-    ): B {
-        logger.warn(branch.dumpKotlinLike() + " is a branch")
+    private inline fun <reified B : IrBranch> visitAnyBranch(branch: B): B {
         branch.result.transform(this, null)
         branch.result.transform(ProjectFieldOnAccessTransformer(logger, pluginContext, projectFunction), null)
         return branch

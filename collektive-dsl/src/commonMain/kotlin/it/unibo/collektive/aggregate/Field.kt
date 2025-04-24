@@ -14,10 +14,24 @@ import it.unibo.collektive.aggregate.api.Aggregate
 import it.unibo.collektive.aggregate.api.NoAlign
 
 /**
- * A field is a map of messages where the key is the [ID] of a node and [T] the associated value.
+ * A [Field] represents the local view of distributed values across a network of nodes.
+ *
+ * Each field consists of:
+ * - A local entry, associated with the node executing the aggregate computation.
+ * - A set of neighboring entries, each identified by a unique [ID].
+ *
+ * The field provides functional operators for aggregation, projection, and transformation,
+ * supporting key aggregate computing patterns. Fields are expected to be aligned when
+ * used together—i.e., they share the same neighborhood structure.
+ *
+ * @param ID the type used to identify nodes in the aggregate space.
+ * @param T the type of value carried by each entry in the field.
  */
 sealed interface Field<ID : Any, out T> {
 
+    /**
+     * The [Aggregate] execution context this field belongs to.
+     */
     val context: Aggregate<ID>
 
     /**
@@ -33,7 +47,7 @@ sealed interface Field<ID : Any, out T> {
     val localValue: T
 
     /**
-     * The [FieldEntry] of the local node.
+     * The entry representing the local node in the field.
      */
     val local: FieldEntry<ID, T>
 
@@ -43,17 +57,17 @@ sealed interface Field<ID : Any, out T> {
     val neighborsCount: Int get() = excludeSelf().size
 
     /**
-     * Returns the [ID]s of all neighbors in this field.
+     * Returns the set of [ID]s of neighboring nodes (excluding self).
      */
     val neighbors: Set<ID>
 
     /**
-     * Returns the values of all neighbors in this field.
+     * Returns a list of the values from neighboring nodes.
      */
     val neighborsValues: List<T> // get() = excludeSelf().values
 
     /**
-     * Returns a [Map] with the neighboring values of this field (namely, all values but self).
+     * Returns a map of entries excluding the local node.
      */
     fun excludeSelf(): Map<ID, T>
 
@@ -142,7 +156,7 @@ sealed interface Field<ID : Any, out T> {
         /**
          * Check if two or more fields are aligned, throwing an IllegalStateException otherwise.
          */
-            fun checkAligned(field1: Field<*, *>, field2: Field<*, *>, vararg fields: Field<*, *>) {
+        fun checkAligned(field1: Field<*, *>, field2: Field<*, *>, vararg fields: Field<*, *>) {
             val ids: Collection<Any?> = field1.neighbors
             sequenceOf(field2, *fields).map { it.neighbors }.forEach {
                 check(it.size == ids.size && it.containsAll(ids)) {
@@ -160,7 +174,7 @@ sealed interface Field<ID : Any, out T> {
         /**
          * Build a field from a [localId], [localValue] and [others] neighbours values.
          */
-            internal operator fun <ID : Any, T> invoke(
+        internal operator fun <ID : Any, T> invoke(
             context: Aggregate<ID>,
             localId: ID,
             localValue: T,
@@ -186,7 +200,7 @@ sealed interface Field<ID : Any, out T> {
          */
         @Deprecated("Use the standard library version")
         @Suppress("DEPRECATION")
-            inline fun <ID : Any, T> Field<ID, T>.hood(default: T, crossinline reduce: (T, T) -> T): T =
+        inline fun <ID : Any, T> Field<ID, T>.hood(default: T, crossinline reduce: (T, T) -> T): T =
             hoodWithId(default) { (_, accumulator), (id, value) -> id to reduce(accumulator, value) }
 
         /**
@@ -201,7 +215,7 @@ sealed interface Field<ID : Any, out T> {
          */
         @Deprecated("Use the standard library version")
         @Suppress("DEPRECATION")
-            inline fun <ID : Any, T> Field<ID, T>.hoodWithId(
+        inline fun <ID : Any, T> Field<ID, T>.hoodWithId(
             default: T,
             crossinline reduce: (Pair<ID, T>, Pair<ID, T>) -> Pair<ID, T>,
         ): T = hoodWithId(default, reduce) { second }
@@ -215,7 +229,7 @@ sealed interface Field<ID : Any, out T> {
          */
         @Deprecated("Use the standard library version")
         @Suppress("DEPRECATION")
-            inline fun <ID : Any, T, R> Field<ID, T>.hoodWithId(
+        inline fun <ID : Any, T, R> Field<ID, T>.hoodWithId(
             default: R,
             crossinline reduce: (Pair<ID, T>, Pair<ID, T>) -> Pair<ID, T>,
             crossinline select: Pair<ID, T>.() -> R,
@@ -230,7 +244,7 @@ sealed interface Field<ID : Any, out T> {
          * The local value is not considered.
          */
         @Deprecated("Use the standard library version")
-            inline fun <ID : Any, T, I, R> Field<ID, T>.hoodWithId(
+        inline fun <ID : Any, T, I, R> Field<ID, T>.hoodWithId(
             default: R,
             crossinline transform: (ID, T) -> I,
             crossinline reduce: (I, I) -> I,
@@ -255,7 +269,7 @@ sealed interface Field<ID : Any, out T> {
          */
         @Suppress("DEPRECATION")
         @Deprecated("Use the standard library version")
-            inline fun <ID : Any, T> Field<ID, T>.hoodWithId(default: T, crossinline transform: (T, ID, T) -> T): T =
+        inline fun <ID : Any, T> Field<ID, T>.hoodWithId(default: T, crossinline transform: (T, ID, T) -> T): T =
             hoodWithId(default) { (_, accumulator), (id, value) -> id to transform(accumulator, id, value) }
 
         /**
@@ -270,7 +284,7 @@ sealed interface Field<ID : Any, out T> {
                 "it.unibo.collektive.stdlib.fields.foldValues",
             ),
         )
-            inline fun <ID : Any, T, R> Field<ID, T>.fold(initial: R, crossinline transform: (R, T) -> R): R =
+        inline fun <ID : Any, T, R> Field<ID, T>.fold(initial: R, crossinline transform: (R, T) -> R): R =
             foldWithId(initial) { accumulator, _, value -> transform(accumulator, value) }
 
         /**
@@ -279,7 +293,7 @@ sealed interface Field<ID : Any, out T> {
          * The local value of the field is not considered.
          */
         @Deprecated("Use the standard library version")
-            inline fun <ID : Any, T, R> Field<ID, T>.foldWithId(initial: R, crossinline transform: (R, ID, T) -> R): R {
+        inline fun <ID : Any, T, R> Field<ID, T>.foldWithId(initial: R, crossinline transform: (R, ID, T) -> R): R {
             var accumulator = initial
             for (entry in excludeSelf()) {
                 accumulator = transform(accumulator, entry.key, entry.value)
@@ -365,10 +379,10 @@ internal abstract class AbstractField<ID : Any, T>(
 
 internal class ArrayBasedField<ID : Any, T>(
     context: Aggregate<ID>,
-    localId: ID, localValue: T,
-    private val others: List<FieldEntry<ID, T>>
-) :
-    AbstractField<ID, T>(context, localId, localValue) {
+    localId: ID,
+    localValue: T,
+    private val others: List<FieldEntry<ID, T>>,
+) : AbstractField<ID, T>(context, localId, localValue) {
 
     override val neighborsCount: Int get() = others.size
     override val neighbors: Set<ID> by lazy {
@@ -441,9 +455,12 @@ internal class SequenceBasedField<ID : Any, T>(
         }
 }
 
-internal class ConstantField<ID : Any, T>(    context: Aggregate<ID>,
-                                              localId: ID, localValue: T, override val neighbors: Set<ID>) :
-    AbstractField<ID, T>(context, localId, localValue) {
+internal class ConstantField<ID : Any, T>(
+    context: Aggregate<ID>,
+    localId: ID,
+    localValue: T,
+    override val neighbors: Set<ID>,
+) : AbstractField<ID, T>(context, localId, localValue) {
     override val neighborsCount: Int = neighbors.size
 
     override val neighborsValues: List<T> by lazy {
@@ -473,10 +490,8 @@ internal class ConstantField<ID : Any, T>(    context: Aggregate<ID>,
         neighbors.asSequence().map { FieldEntry(checkNotLocal(it), local.value) } + local
 }
 
-internal class PointwiseField<ID : Any, T>(
-    context: Aggregate<ID>,
-    localId: ID, localValue: T
-) : AbstractField<ID, T>(context, localId, localValue) {
+internal class PointwiseField<ID : Any, T>(context: Aggregate<ID>, localId: ID, localValue: T) :
+    AbstractField<ID, T>(context, localId, localValue) {
 
     override fun neighborsMap(): Map<ID, T> = emptyMap()
 

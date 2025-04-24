@@ -91,4 +91,3 @@ val IrFunction.isAbstract get() = this is IrSimpleFunction && modality == Modali
 
 /** Returns `true` if this function is concrete (i.e., not abstract). */
 val IrFunction.isConcrete get() = !isAbstract
-

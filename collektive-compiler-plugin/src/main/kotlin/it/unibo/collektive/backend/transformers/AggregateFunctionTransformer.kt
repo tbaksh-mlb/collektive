@@ -10,7 +10,7 @@ package it.unibo.collektive.backend.transformers
 
 import it.unibo.collektive.utils.common.isAggregate
 import it.unibo.collektive.utils.common.isConcrete
-import it.unibo.collektive.utils.logging.info
+import it.unibo.collektive.utils.logging.debug
 import it.unibo.collektive.utils.stack.StackFunctionCall
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -38,7 +38,7 @@ class AggregateFunctionTransformer(
 
     override fun visitFunction(declaration: IrFunction): IrStatement {
         if (declaration.isConcrete && declaration.isAggregate(aggregateClass, fieldClass, logger)) {
-            logger.info(declaration.dumpKotlinLike() + " is an aggregate function")
+            logger.debug(declaration.dumpKotlinLike() + " is an aggregate function")
             /*
              This transformation is needed to project field inside the `alignOn` function called directly by the user.
              This is made before the alignment transformation because of optimization reasons:

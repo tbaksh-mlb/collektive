@@ -9,7 +9,7 @@
 package it.unibo.collektive.backend.transformers
 
 import it.unibo.collektive.utils.common.AggregateFunctionNames.FIELD_CLASS
-import it.unibo.collektive.utils.logging.warn
+import it.unibo.collektive.utils.logging.debug
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.ir.builders.IrSingleStatementBuilder
@@ -32,7 +32,7 @@ internal class ProjectFieldOnAccessTransformer(
 ) : IrElementTransformerVoid() {
     override fun visitGetValue(expression: IrGetValue): IrExpression {
         if (expression.type.classFqName == FqName(FIELD_CLASS)) {
-            logger.warn("This expression returns a field: ${expression.dumpKotlinLike()}")
+            logger.debug("This expression returns a field: ${expression.dumpKotlinLike()}")
             return wrapInProjectFunction(expression) // , aggregateReference)
         }
         return super.visitGetValue(expression)
@@ -46,7 +46,7 @@ internal class ProjectFieldOnAccessTransformer(
     )
         .irCall(projectFunction).apply {
             // Set the return type
-            logger.warn("Projecting: ${fieldExpression.dumpKotlinLike()}")
+            logger.debug("Projecting: ${fieldExpression.dumpKotlinLike()}")
             this.type = fieldExpression.type
             // Set generics type of the `alignOn` function
 //            putTypeArgument(0, fieldExpression.type.)

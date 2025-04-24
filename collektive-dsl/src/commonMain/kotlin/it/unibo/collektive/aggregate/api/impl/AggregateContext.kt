@@ -125,4 +125,3 @@ internal class AggregateContext<ID : Any>(
 
     override fun toString() = "${this::class.simpleName}@$localId"
 }
-
