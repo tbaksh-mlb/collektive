@@ -33,7 +33,6 @@ class AggregateFunctionTransformer(
     private val alignRawFunction: IrFunction,
     private val dealignFunction: IrFunction,
     private val projectFunction: IrFunction,
-    private val getContext: IrFunction,
 ) : IrElementTransformerVoid() {
 
     override fun visitFunction(declaration: IrFunction): IrStatement {
@@ -60,7 +59,6 @@ class AggregateFunctionTransformer(
                     declaration,
                     alignRawFunction,
                     dealignFunction,
-                    getContext,
                     logger,
                 ),
                 StackFunctionCall(),

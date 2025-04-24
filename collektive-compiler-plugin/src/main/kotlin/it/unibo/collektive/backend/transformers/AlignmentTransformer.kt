@@ -51,7 +51,6 @@ class AlignmentTransformer(
     private val functionToAlign: IrFunction,
     private val alignRawFunction: IrFunction,
     private val dealignFunction: IrFunction,
-    private val getContext: IrFunction,
     private val logger: MessageCollector,
 ) : IrTransformer<StackFunctionCall>() {
     private var alignedFunctions = emptyMap<String, Int>()
@@ -67,7 +66,6 @@ class AlignmentTransformer(
                     pluginContext,
                     aggregateClass,
                     fieldClass,
-                    getContext,
                     logger,
                 )
                 checkNotNull(context) {

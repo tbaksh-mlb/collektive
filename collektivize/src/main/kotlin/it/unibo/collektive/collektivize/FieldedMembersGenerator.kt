@@ -10,7 +10,7 @@ package it.unibo.collektive.collektivize
 
 import com.squareup.kotlinpoet.FileSpec
 import it.unibo.collektive.aggregate.Field
-import it.unibo.collektive.collektivize.utils.generatePrimitivesFile
+import it.unibo.collektive.collektivize.utils.generatePrimitivesFiles
 import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
@@ -260,13 +260,12 @@ object FieldedMembersGenerator {
                     }
                 }
             extensions
-                .asSequence()
                 .filter { (_, members) -> members.isNotEmpty() }
-                .mapNotNull { (receiver, members) ->
-                    generatePrimitivesFile(
+                .flatMap { (receiver, members) ->
+                    generatePrimitivesFiles(
                         members,
-                        "$packageName.${receiver.lowercase()}s",
-                        "Fielded${name}${if (name.endsWith("s")) "Extensions" else 's'}",
+                        "$packageName.${name.lowercase()}.${receiver.lowercase()}s",
+                        "Fielded${name}",
                     )
                 }
         }

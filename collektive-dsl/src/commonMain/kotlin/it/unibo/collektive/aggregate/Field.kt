@@ -12,6 +12,7 @@ package it.unibo.collektive.aggregate
 
 import it.unibo.collektive.aggregate.api.Aggregate
 import it.unibo.collektive.aggregate.api.NoAlign
+import it.unibo.collektive.aggregate.api.neighborhood
 
 /**
  * A [Field] represents the local view of distributed values across a network of nodes.
@@ -28,11 +29,6 @@ import it.unibo.collektive.aggregate.api.NoAlign
  * @param T the type of value carried by each entry in the field.
  */
 sealed interface Field<ID : Any, out T> {
-
-    /**
-     * The [Aggregate] execution context this field belongs to.
-     */
-    val context: Aggregate<ID>
 
     /**
      * The [ID] of the local node.
@@ -129,13 +125,15 @@ sealed interface Field<ID : Any, out T> {
     /**
      * Map the field resulting in a new one where the value for the local and the neighbors is [singleton].
      */
-    fun <B> mapToConstant(singleton: B): Field<ID, B> = ConstantField(context, local.id, singleton, excludeSelf().keys)
+    fun <B> mapToConstant(singleton: B): Field<ID, B>
 
     /**
      * Get the value associated with the [id].
      * Raise an error if the [id] is not present in the field.
      */
     operator fun get(id: ID): T
+
+    fun projected(): Field<ID, T>
 
     /**
      * Transform the field into a sequence of pairs containing the [ID] and the associated value.
@@ -304,7 +302,7 @@ sealed interface Field<ID : Any, out T> {
 }
 
 internal abstract class AbstractField<ID : Any, T>(
-    final override val context: Aggregate<ID>,
+    final val context: Aggregate<ID>,
     final override val local: FieldEntry<ID, T>,
 ) : Field<ID, T> {
 
@@ -363,6 +361,24 @@ internal abstract class AbstractField<ID : Any, T>(
     protected abstract fun neighborValueOf(id: ID): T
 
     protected abstract fun <R> mapOthersAsSequence(transform: (FieldEntry<ID, T>) -> R): Sequence<FieldEntry<ID, R>>
+
+    override fun <B> mapToConstant(singleton: B): Field<ID, B> = ConstantField(context, local.id, singleton, excludeSelf().keys)
+
+    override fun projected(): Field<ID, T> {
+        val others = context.neighborhood()
+        return when {
+            neighborsCount == others.neighborsCount -> this
+            neighborsCount > others.neighborsCount -> others.map { (id, _) -> this[id] }
+            else ->
+                error(
+                    """
+                Collektive is in an inconsistent state, this is most likely a bug in the implementation.
+                Field $this with $neighborsCount neighbors has been projected into a context
+                with more neighbors, ${others.neighborsCount}: ${others.excludeSelf().keys}.
+                """.trimIndent().replace(Regex("'\\R"), " "),
+                )
+        }
+    }
 
     private fun <T> tryCompare(a: T, b: T): Int = when {
         a is Comparable<*> && b is Comparable<*> -> {

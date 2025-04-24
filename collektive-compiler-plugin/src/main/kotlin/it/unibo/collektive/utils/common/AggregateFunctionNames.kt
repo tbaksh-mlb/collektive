@@ -73,7 +73,7 @@ object AggregateFunctionNames {
     val NO_ALIGN_ANNOTATION_FQ_NAME: String = checkNotNull(NoAlign::class.qualifiedName)
 
     /** Name of the `project(...)` function for field projections. */
-    const val PROJECT_FUNCTION: String = "project"
+    const val PROJECTED_FUNCTION: String = "projected"
 
     /** Fully-qualified name of the `share(...)` function. */
     const val SHARE_FUNCTION_FQ_NAME: String = "it.unibo.collektive.aggregate.api.share"

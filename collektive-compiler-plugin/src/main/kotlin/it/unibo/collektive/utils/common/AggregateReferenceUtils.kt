@@ -73,7 +73,7 @@ fun IrExpression.findAggregateReference(
     pluginContext: IrPluginContext,
     aggregateClass: IrClass,
     fieldClass: IrClass,
-    getContext: IrFunction,
+    projectFunction: IrFunction,
     logger: MessageCollector?,
 ): IrExpression? = findFirstCapturedVariableOfType(aggregateClass)
     ?: findFirstCapturedVariableOfType(fieldClass)

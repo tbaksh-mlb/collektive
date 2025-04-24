@@ -10,7 +10,7 @@ package it.unibo.collektive.stdlib.spreading
 
 import it.unibo.collektive.aggregate.Field
 import it.unibo.collektive.aggregate.api.Aggregate
-import it.unibo.collektive.stdlib.ints.FieldedInts.toDouble
+import it.unibo.collektive.stdlib.int.ints.toDouble
 import it.unibo.collektive.stdlib.util.Reducer
 import it.unibo.collektive.stdlib.util.hops
 import kotlin.jvm.JvmOverloads

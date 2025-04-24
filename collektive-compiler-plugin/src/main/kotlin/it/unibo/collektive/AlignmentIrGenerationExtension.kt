@@ -15,7 +15,7 @@ import it.unibo.collektive.utils.common.AggregateFunctionNames.AGGREGATE_CLASS_F
 import it.unibo.collektive.utils.common.AggregateFunctionNames.ALIGN_FUNCTION_NAME
 import it.unibo.collektive.utils.common.AggregateFunctionNames.DEALIGN_FUNCTION_NAME
 import it.unibo.collektive.utils.common.AggregateFunctionNames.FIELD_CLASS
-import it.unibo.collektive.utils.common.AggregateFunctionNames.PROJECT_FUNCTION
+import it.unibo.collektive.utils.common.AggregateFunctionNames.PROJECTED_FUNCTION
 import it.unibo.collektive.utils.logging.error
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -25,8 +25,6 @@ import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.util.functions
-import org.jetbrains.kotlin.ir.util.getPropertyGetter
-import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
@@ -47,15 +45,9 @@ class AlignmentIrGenerationExtension(private val logger: MessageCollector) : IrG
         val fieldClass = checkNotNull(pluginContext.referenceClass(ClassId.topLevel(FqName(FIELD_CLASS)))) {
             "Class $FIELD_CLASS not found"
         }
-        val getContextSymbol = checkNotNull(fieldClass.getPropertyGetter("context")) {
-            "Property 'context' not found in class $FIELD_CLASS"
+        val projectFunction = checkNotNull(fieldClass.getFunctionReferenceWithName(PROJECTED_FUNCTION)) {
+            "Unable to find the '$PROJECTED_FUNCTION' function"
         }
-        val projectFunction = pluginContext.referenceFunctions(
-            CallableId(
-                FqName("it.unibo.collektive.aggregate.api.impl"),
-                Name.identifier(PROJECT_FUNCTION),
-            ),
-        ).firstOrNull() ?: return logger.error("Unable to find the 'project' function")
         // Function that handles the alignment
         val alignRawFunction =
             aggregateClass.getFunctionReferenceWithName(ALIGN_FUNCTION_NAME)
@@ -75,7 +67,6 @@ class AlignmentIrGenerationExtension(private val logger: MessageCollector) : IrG
                 alignRawFunction.owner,
                 dealignFunction.owner,
                 projectFunction.owner,
-                getContextSymbol.owner,
             ),
             null,
         )
