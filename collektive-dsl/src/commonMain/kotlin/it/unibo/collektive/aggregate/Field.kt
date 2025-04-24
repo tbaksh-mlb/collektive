@@ -473,8 +473,10 @@ internal class ConstantField<ID : Any, T>(    context: Aggregate<ID>,
         neighbors.asSequence().map { FieldEntry(checkNotLocal(it), local.value) } + local
 }
 
-internal class PointwiseField<ID : Any, T>(    context: Aggregate<ID>,
-                                               localId: ID, localValue: T) : AbstractField<ID, T>(context, localId, localValue) {
+internal class PointwiseField<ID : Any, T>(
+    context: Aggregate<ID>,
+    localId: ID, localValue: T
+) : AbstractField<ID, T>(context, localId, localValue) {
 
     override fun neighborsMap(): Map<ID, T> = emptyMap()
 

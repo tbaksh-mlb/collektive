@@ -9,6 +9,7 @@
 package it.unibo.collektive.backend.transformers
 
 import it.unibo.collektive.utils.common.isAggregate
+import it.unibo.collektive.utils.common.isConcrete
 import it.unibo.collektive.utils.logging.info
 import it.unibo.collektive.utils.stack.StackFunctionCall
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -20,11 +21,11 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 
 /**
- * Looking for the aggregate function call, which is the one that contains the function calls
+ * Looking for the aggregate function definition, which is the one that contains the function calls
  * and the branches that have to be aligned. The body of this function call will be
  * transformed by adding the alignedOn function when necessary.
  */
-class AggregateCallTransformer(
+class AggregateFunctionTransformer(
     private val pluginContext: IrPluginContext,
     private val logger: MessageCollector,
     private val aggregateClass: IrClass,
@@ -32,10 +33,11 @@ class AggregateCallTransformer(
     private val alignRawFunction: IrFunction,
     private val dealignFunction: IrFunction,
     private val projectFunction: IrFunction,
+    private val getContext: IrFunction,
 ) : IrElementTransformerVoid() {
 
     override fun visitFunction(declaration: IrFunction): IrStatement {
-        if (declaration.isAggregate(aggregateClass, fieldClass, logger)) {
+        if (declaration.isConcrete && declaration.isAggregate(aggregateClass, fieldClass, logger)) {
             logger.info(declaration.dumpKotlinLike() + " is an aggregate function")
             /*
              This transformation is needed to project field inside the `alignOn` function called directly by the user.
@@ -44,7 +46,7 @@ class AggregateCallTransformer(
              we made a projection, which is not necessary.
              */
             declaration.transformChildren(
-                FieldTransformer(pluginContext, logger, projectFunction),
+                ProjectionTransformer(pluginContext, logger, projectFunction),
                 null,
             )
             /*
@@ -58,13 +60,12 @@ class AggregateCallTransformer(
                     declaration,
                     alignRawFunction,
                     dealignFunction,
-                    logger
+                    getContext,
+                    logger,
                 ),
                 StackFunctionCall(),
             )
         }
         return super.visitFunction(declaration)
     }
-
 }
-

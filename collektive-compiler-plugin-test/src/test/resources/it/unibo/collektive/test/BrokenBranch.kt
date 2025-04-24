@@ -12,10 +12,9 @@ import it.unibo.collektive.aggregate.api.neighboring
 import kotlin.random.Random
 
 fun <ID : Any> Aggregate<ID>.project() {
-    val outer = neighboring(1)
     if (Random.nextDouble() < 0.5) {
-        println(outer)
+        neighboring(1)
     } else {
-        outer.alignedMapValues(neighboring(3)) { a, b -> a + b }
-    }
+        neighboring(2)
+    }.alignedMapValues(neighboring(3)) { a, b -> a + b }
 }

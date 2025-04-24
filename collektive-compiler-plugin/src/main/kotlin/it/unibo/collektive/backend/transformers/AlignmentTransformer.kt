@@ -13,6 +13,7 @@ import it.unibo.collektive.utils.common.AggregateFunctionNames.DEALIGN_FUNCTION_
 import it.unibo.collektive.utils.common.findAggregateReference
 import it.unibo.collektive.utils.common.getAlignmentToken
 import it.unibo.collektive.utils.common.irStatement
+import it.unibo.collektive.utils.common.isAggregate
 import it.unibo.collektive.utils.common.simpleFunctionName
 import it.unibo.collektive.utils.stack.StackFunctionCall
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -35,6 +36,7 @@ import org.jetbrains.kotlin.ir.expressions.IrElseBranch
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.putArgument
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.visitors.IrTransformer
 
 /**
@@ -49,42 +51,57 @@ class AlignmentTransformer(
     private val functionToAlign: IrFunction,
     private val alignRawFunction: IrFunction,
     private val dealignFunction: IrFunction,
+    private val getContext: IrFunction,
     private val logger: MessageCollector,
 ) : IrTransformer<StackFunctionCall>() {
     private var alignedFunctions = emptyMap<String, Int>()
 
     @OptIn(UnsafeDuringIrConstructionAPI::class)
     override fun visitCall(expression: IrCall, data: StackFunctionCall): IrElement {
-        val contextReference = expression.findAggregateReference(pluginContext, aggregateClass, fieldClass, logger)
-
         val alignmentToken = expression.getAlignmentToken()
-        // If the context is null, this means that the function is not an aggregate function
-        if (contextReference == null) {
-            data.push(alignmentToken)
-        }
-        return contextReference?.let { context ->
-            // We don't want to align the alignRaw and dealign functions :)
-            val functionName = expression.simpleFunctionName()
-            if (functionName == ALIGN_FUNCTION_NAME || functionName == DEALIGN_FUNCTION_NAME) {
-                return super.visitCall(expression, data)
-            }
-            // If no function, the first time the counter is 1
-            val actualCounter = alignedFunctions[alignmentToken]?.let { it + 1 } ?: 1
-            alignedFunctions += alignmentToken to actualCounter
-            // If the expression contains a lambda, this recursion is necessary to visit the children
-            expression.transformChildren(this, StackFunctionCall())
-            val tokenCount =
-                alignedFunctions[alignmentToken] ?: error(
-                    """
+        return when {
+            expression.symbol.owner.isAggregate(aggregateClass, fieldClass, logger) -> {
+                // This is an aggregate function, hence we need to transform it
+                // Calling alignRaw and dealign.
+                val context = expression.findAggregateReference(
+                    pluginContext,
+                    aggregateClass,
+                    fieldClass,
+                    getContext,
+                    logger,
+                )
+                checkNotNull(context) {
+                    "Function ${expression.symbol.owner.name} is an aggregate function," +
+                        "but it does not have a viable aggregate reference\n${expression.dumpKotlinLike()}"
+                }
+                // We don't want to align the alignRaw and dealign functions :)
+                val functionName = expression.simpleFunctionName()
+                if (functionName == ALIGN_FUNCTION_NAME || functionName == DEALIGN_FUNCTION_NAME) {
+                    return super.visitCall(expression, data)
+                }
+                // If no function, the first time the counter is 1
+                val actualCounter = alignedFunctions[alignmentToken]?.let { it + 1 } ?: 1
+                alignedFunctions += alignmentToken to actualCounter
+                // If the expression contains a lambda, this recursion is necessary to visit the children
+                expression.transformChildren(this, StackFunctionCall())
+                val tokenCount =
+                    alignedFunctions[alignmentToken] ?: error(
+                        """
                     Unable to find the count for the token $alignmentToken.
                     This is may due to a bug in collektive compiler plugin.
-                    """.trimIndent(),
-                )
-            val alignmentTokenRepresentation = "$data$alignmentToken.$tokenCount"
-            // Return the modified function body to have as a first statement the alignRaw function,
-            // then the body of the function to align and finally the dealign function
-            generateAlignmentCode(context, functionToAlign, expression) { irString(alignmentTokenRepresentation) }
-        } ?: super.visitCall(expression, data)
+                        """.trimIndent(),
+                    )
+                val alignmentTokenRepresentation = "$data$alignmentToken.$tokenCount"
+                // Return the modified function body to have as a first statement the alignRaw function,
+                // then the body of the function to align and finally the dealign function
+                generateAlignmentCode(context, functionToAlign, expression) { irString(alignmentTokenRepresentation) }
+            }
+            else -> {
+                // This is not an aggregate function, so we take note that we visited it and recur
+                data.push(alignmentToken)
+                super.visitCall(expression, data)
+            }
+        }
     }
 
     override fun visitBranch(branch: IrBranch, data: StackFunctionCall): IrBranch {
@@ -98,7 +115,7 @@ class AlignmentTransformer(
     }
 
     private fun IrBranch.generateBranchAlignmentCode(condition: Boolean) {
-        result.findAggregateReference(pluginContext, aggregateClass, fieldClass, logger)?.let {
+        result.findAggregateReference(pluginContext, aggregateClass, fieldClass, getContext, logger)?.let {
             result = generateAlignmentCode(it, functionToAlign, result) { irBoolean(condition) }
         }
     }

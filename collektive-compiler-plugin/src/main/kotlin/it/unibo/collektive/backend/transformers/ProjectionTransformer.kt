@@ -27,7 +27,7 @@ import org.jetbrains.kotlin.name.Name
  * for each field operation inside the `alignedOn` function and inside the bodies of a branch,
  * the field is wrapped in the `project` function.
  */
-class FieldTransformer(
+class ProjectionTransformer(
     private val pluginContext: IrPluginContext,
     private val logger: MessageCollector,
     private val projectFunction: IrFunction,
@@ -43,21 +43,24 @@ class FieldTransformer(
             // If the expression contains a lambda, this recursion is necessary to visit the children
             expression.transformChildren(this, null)
             return expression.transform(
-                FieldProjectionTransformer(logger, pluginContext, projectFunction),
+                ProjectFieldOnAccessTransformer(logger, pluginContext, projectFunction),
                 null,
             )
         }
         return super.visitCall(expression)
     }
 
-    override fun visitBranch(branch: IrBranch): IrBranch = visitAnyBranch(branch){ transform(it, null) }
+    override fun visitBranch(branch: IrBranch): IrBranch = visitAnyBranch(branch) { transform(it, null) }
 
     override fun visitElseBranch(branch: IrElseBranch): IrElseBranch = visitAnyBranch(branch) { transform(it, null) }
 
-    private inline fun <reified B: IrBranch> visitAnyBranch(branch: B, typedTransform: B.(FieldProjectionTransformer) -> B): B {
+    private inline fun <reified B : IrBranch> visitAnyBranch(
+        branch: B,
+        typedTransform: B.(ProjectFieldOnAccessTransformer) -> B,
+    ): B {
         logger.warn(branch.dumpKotlinLike() + " is a branch")
         branch.result.transform(this, null)
-        branch.result.transform(FieldProjectionTransformer(logger, pluginContext, projectFunction), null)
+        branch.result.transform(ProjectFieldOnAccessTransformer(logger, pluginContext, projectFunction), null)
         return branch
     }
 }

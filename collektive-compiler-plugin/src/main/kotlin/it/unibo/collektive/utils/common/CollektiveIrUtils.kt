@@ -9,10 +9,12 @@
 package it.unibo.collektive.utils.common
 
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.Scope
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.symbols.FqNameEqualityChecker
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
@@ -64,7 +66,7 @@ private val removedPrefixes = listOf(
 private fun String.withBetterSymbols(): String {
     val clean = replacements.fold(this) { current, (replaced, replacement) -> current.replace(replaced, replacement) }
     return when {
-        removedPrefixes.any { clean.startsWith(it) } -> "\u200B${clean.substringAfterLast('.')}"
+        removedPrefixes.any { clean.startsWith(it) } -> "~${clean.substringAfterLast('.')}"
         else -> clean
     }
 }
@@ -83,3 +85,10 @@ internal fun <T : IrElement> irStatement(
     expression.startOffset,
     expression.endOffset,
 ).body()
+
+/** Returns `true` if this function is abstract. */
+val IrFunction.isAbstract get() = this is IrSimpleFunction && modality == Modality.ABSTRACT
+
+/** Returns `true` if this function is concrete (i.e., not abstract). */
+val IrFunction.isConcrete get() = !isAbstract
+

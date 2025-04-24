@@ -10,7 +10,7 @@
 
 package it.unibo.collektive
 
-import it.unibo.collektive.backend.transformers.AggregateCallTransformer
+import it.unibo.collektive.backend.transformers.AggregateFunctionTransformer
 import it.unibo.collektive.utils.common.AggregateFunctionNames.AGGREGATE_CLASS_FQ_NAME
 import it.unibo.collektive.utils.common.AggregateFunctionNames.ALIGN_FUNCTION_NAME
 import it.unibo.collektive.utils.common.AggregateFunctionNames.DEALIGN_FUNCTION_NAME
@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.getPropertyGetter
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -44,17 +45,16 @@ class AlignmentIrGenerationExtension(private val logger: MessageCollector) : IrG
                 ClassId.topLevel(FqName(AGGREGATE_CLASS_FQ_NAME)),
             ) ?: return logger.error("Class $AGGREGATE_CLASS_FQ_NAME not found")
 
-        val fieldClass = pluginContext.referenceClass(ClassId.topLevel(FqName(FIELD_CLASS)))
-            ?: return logger.error("Class $FIELD_CLASS not found")
-
-        val projectFunction =
-            pluginContext
-                .referenceFunctions(
-                    CallableId(
-                        FqName("it.unibo.collektive.aggregate.api.impl"),
-                        Name.identifier(PROJECT_FUNCTION),
-                    ),
-                ).firstOrNull() ?: return logger.error("Unable to find the 'project' function")
+        val fieldClass = checkNotNull(pluginContext.referenceClass(ClassId.topLevel(FqName(FIELD_CLASS))))
+        val getContextSymbol =
+            checkNotNull(fieldClass.getPropertyGetter("context"))
+                ?: return logger.error("Class $FIELD_CLASS not found")
+        val projectFunction = pluginContext.referenceFunctions(
+            CallableId(
+                FqName("it.unibo.collektive.aggregate.api.impl"),
+                Name.identifier(PROJECT_FUNCTION),
+            ),
+        ).firstOrNull() ?: return logger.error("Unable to find the 'project' function")
 
         // Function that handles the alignment
         val alignRawFunction =
@@ -69,7 +69,7 @@ class AlignmentIrGenerationExtension(private val logger: MessageCollector) : IrG
          This applies the alignment call on all the aggregate functions
          */
         moduleFragment.transform(
-            AggregateCallTransformer(
+            AggregateFunctionTransformer(
                 pluginContext,
                 logger,
                 aggregateClass.owner,
@@ -77,11 +77,12 @@ class AlignmentIrGenerationExtension(private val logger: MessageCollector) : IrG
                 alignRawFunction.owner,
                 dealignFunction.owner,
                 projectFunction.owner,
+                getContextSymbol.owner,
             ),
             null,
         )
     }
 
     private fun IrClassSymbol.getFunctionReferenceWithName(functionName: String): IrFunctionSymbol? =
-        functions.firstOrNull { it.owner.name == Name.identifier(functionName) }
+        functions.single { it.owner.name == Name.identifier(functionName) }
 }

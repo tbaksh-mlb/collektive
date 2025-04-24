@@ -14,103 +14,73 @@ import it.unibo.collektive.aggregate.api.NoAlign
 import it.unibo.collektive.aggregate.api.YieldingContext
 
 /**
- * The names of the aggregate functions used in the plugin.
+ * Contains canonical names for aggregate-related functions, classes, and annotations.
+ *
+ * This object centralizes the string constants that represent:
+ * - Fully-qualified names (FQNs) of DSL functions and types
+ * - Function names used by the Collektive Kotlin compiler plugin
+ *
+ * These constants are useful for matching IR declarations, resolving symbols, and generating IR.
  */
 object AggregateFunctionNames {
-    /**
-     * The simple name of the aggregate class.
-     */
-    val AGGREGATE_CLASS_NAME = Aggregate::class.simpleName
 
-    /**
-     * The FQ name of the aggregate class.
-     */
-    val AGGREGATE_CLASS_FQ_NAME = checkNotNull(Aggregate::class.qualifiedName)
+    /** Simple name of the [Aggregate] interface. Useful for logging and diagnostics. */
+    val AGGREGATE_CLASS_NAME: String? = Aggregate::class.simpleName
 
-    /**
-     * The package name of the aggregate api.
-     */
-    val AGGREGATE_API_PACKAGE = AGGREGATE_CLASS_FQ_NAME.substringBeforeLast('.')
+    /** Fully qualified name of the [Aggregate] interface. */
+    val AGGREGATE_CLASS_FQ_NAME: String = checkNotNull(Aggregate::class.qualifiedName)
 
-    /**
-     * The simple name of the function that is used to align a block.
-     */
-    const val ALIGNED_ON_FUNCTION_NAME = "alignedOn"
+    /** The package containing the Aggregate DSL API. */
+    val AGGREGATE_API_PACKAGE: String = AGGREGATE_CLASS_FQ_NAME.substringBeforeLast('.')
 
-    /**
-     * The FQ name of the function that is used to align a block.
-     */
-    val ALIGNED_ON_FUNCTION_FQ_NAME = "$AGGREGATE_CLASS_FQ_NAME.$ALIGNED_ON_FUNCTION_NAME"
+    /** Name of the top-level [Aggregate.alignedOn] DSL function. */
+    const val ALIGNED_ON_FUNCTION_NAME: String = "alignedOn"
 
-    /**
-     * The simple name of the function that is used to start an alignment delimitation.
-     */
-    val ALIGN_FUNCTION_NAME = Aggregate<*>::align.name
+    /** Fully qualified name of the top-level [Aggregate.alignedOn] DSL function. */
+    val ALIGNED_ON_FUNCTION_FQ_NAME: String = "$AGGREGATE_CLASS_FQ_NAME.$ALIGNED_ON_FUNCTION_NAME"
 
-    /**
-     * The FQ name of the function that is used to start an alignment delimitation.
-     */
-    val ALIGN_FUNCTION_FQ_NAME = "$AGGREGATE_CLASS_FQ_NAME.$ALIGN_FUNCTION_NAME"
+    /** Name of the [Aggregate.align] function used to begin an alignment block. */
+    val ALIGN_FUNCTION_NAME: String = Aggregate<*>::align.name
 
-    /**
-     * The name of the function that is used to stop an alignment delimitation.
-     */
-    val DEALIGN_FUNCTION_NAME = Aggregate<*>::dealign.name
+    /** Fully qualified name of the [Aggregate.align] function. */
+    val ALIGN_FUNCTION_FQ_NAME: String = "$AGGREGATE_CLASS_FQ_NAME.$ALIGN_FUNCTION_NAME"
 
-    /**
-     * The FQ name of the function that is used to stop an alignment delimitation.
-     */
-    val DEALIGN_FUNCTION_FQ_NAME = "$AGGREGATE_CLASS_FQ_NAME.$DEALIGN_FUNCTION_NAME"
+    /** Name of the [Aggregate.dealign] function used to close an alignment block. */
+    val DEALIGN_FUNCTION_NAME: String = Aggregate<*>::dealign.name
 
-    /**
-     * The FQ name of the field class.
-     */
-    val FIELD_CLASS = checkNotNull(Field::class.qualifiedName)
+    /** Fully-qualified name of the [Aggregate.dealign] function. */
+    val DEALIGN_FUNCTION_FQ_NAME: String = "$AGGREGATE_CLASS_FQ_NAME.$DEALIGN_FUNCTION_NAME"
 
-    /**
-     * The FQ name of the `evolve` function.
-     */
-    val EVOLVE_FUNCTION_FQ_NAME = "$AGGREGATE_CLASS_FQ_NAME.evolve"
+    /** Fully-qualified name of the [Field] class. Used to identify field types in IR. */
+    val FIELD_CLASS: String = checkNotNull(Field::class.qualifiedName)
 
-    /**
-     * The FQ name of the `evolving` function.
-     */
-    val EVOLVING_FUNCTION_FQ_NAME = "${AGGREGATE_CLASS_FQ_NAME}.evolving"
+    /** Fully-qualified name of the [Aggregate.evolve] function. */
+    val EVOLVE_FUNCTION_FQ_NAME: String = "$AGGREGATE_CLASS_FQ_NAME.evolve"
 
-    /**
-     * The FQ name of the `exchange` function.
-     */
-    const val EXCHANGE_FUNCTION_FQ_NAME = "it.unibo.collektive.aggregate.api.exchange"
+    /** Fully-qualified name of the [Aggregate.evolving] function. */
+    val EVOLVING_FUNCTION_FQ_NAME: String = "$AGGREGATE_CLASS_FQ_NAME.evolving"
 
-    /**
-     * The FQ name of the `exchanging` function.
-     */
-    const val EXCHANGING_FUNCTION_FQ_NAME = "it.unibo.collektive.aggregate.api.exchanging"
+    /** Fully-qualified name of the `exchange(...)` function. */
+    const val EXCHANGE_FUNCTION_FQ_NAME: String = "it.unibo.collektive.aggregate.api.exchange"
 
-    /**
-     * The FQ name of the `neighboring` function.
-     */
-    const val NEIGHBORING_FUNCTION_FQ_NAME = "it.unibo.collektive.aggregate.api.neighboring"
+    /** Fully-qualified name of the `exchanging(...)` function. */
+    const val EXCHANGING_FUNCTION_FQ_NAME: String = "it.unibo.collektive.aggregate.api.exchanging"
 
-    val NO_ALIGN_ANNOTATION_FQ_NAME = checkNotNull(NoAlign::class.qualifiedName)
+    /** Fully-qualified name of the `neighboring(...)` function for building neighbor views. */
+    const val NEIGHBORING_FUNCTION_FQ_NAME: String = "it.unibo.collektive.aggregate.api.neighboring"
 
-    /**
-     * The name of the function that is used to project the fields.
-     */
-    const val PROJECT_FUNCTION = "project"
+    /** Fully-qualified name of the [NoAlign] annotation used to suppress automatic alignment. */
+    val NO_ALIGN_ANNOTATION_FQ_NAME: String = checkNotNull(NoAlign::class.qualifiedName)
 
-    /**
-     * The FQ name of the `share` function.
-     */
-    const val SHARE_FUNCTION_FQ_NAME = "it.unibo.collektive.aggregate.api.share"
+    /** Name of the `project(...)` function for field projections. */
+    const val PROJECT_FUNCTION: String = "project"
 
-    /**
-     * The FQ name of the `sharing` function.
-     */
-    const val SHARING_FUNCTION_FQ_NAME = "it.unibo.collektive.aggregate.api.sharing"
+    /** Fully-qualified name of the `share(...)` function. */
+    const val SHARE_FUNCTION_FQ_NAME: String = "it.unibo.collektive.aggregate.api.share"
 
-    /**
-     * The FQ name of the `yielding` function.
-     */
-    val YIELDING_FUNCTION_FQ_NAME = "${checkNotNull(YieldingContext::class.qualifiedName)}.yielding"
+    /** Fully-qualified name of the `sharing(...)` function for declarative data flow. */
+    const val SHARING_FUNCTION_FQ_NAME: String = "it.unibo.collektive.aggregate.api.sharing"
+
+    /** Fully-qualified name of the [YieldingContext.yielding] function within a [YieldingContext]. */
+    val YIELDING_FUNCTION_FQ_NAME: String = "${checkNotNull(YieldingContext::class.qualifiedName)}.yielding"
 }

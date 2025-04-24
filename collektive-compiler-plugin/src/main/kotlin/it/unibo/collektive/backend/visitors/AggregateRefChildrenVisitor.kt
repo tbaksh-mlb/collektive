@@ -57,7 +57,12 @@ class AggregateRefChildrenVisitor(
                 .find { it.type.isAssignableFrom(fieldClass.defaultType) }
                 ?.let { fieldExpression: IrExpression ->
                     fromField = true
-                    IrSingleStatementBuilder(pluginContext, Scope(getContextSymbol), fieldExpression.startOffset, fieldExpression.endOffset)
+                    IrSingleStatementBuilder(
+                        pluginContext,
+                        Scope(getContextSymbol),
+                        fieldExpression.startOffset,
+                        fieldExpression.endOffset,
+                    )
                         .build {
                             irCall(getContextSymbol).apply {
                                 this.type = aggregateClass.defaultType
@@ -72,4 +77,3 @@ class AggregateRefChildrenVisitor(
         aggregateContextRef?.let { elements.add(it) } ?: super.visitCall(expression, data)
     }
 }
-

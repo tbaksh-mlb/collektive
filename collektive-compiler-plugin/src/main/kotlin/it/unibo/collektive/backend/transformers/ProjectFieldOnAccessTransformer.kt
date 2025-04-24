@@ -24,7 +24,7 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.name.FqName
 
-internal class FieldProjectionTransformer(
+internal class ProjectFieldOnAccessTransformer(
     private val logger: MessageCollector,
     private val pluginContext: IrPluginContext,
     private val projectFunction: IrFunction,
@@ -33,15 +33,17 @@ internal class FieldProjectionTransformer(
     override fun visitGetValue(expression: IrGetValue): IrExpression {
         if (expression.type.classFqName == FqName(FIELD_CLASS)) {
             logger.warn("This expression returns a field: ${expression.dumpKotlinLike()}")
-            return wrapInProjectFunction(expression) //, aggregateReference)
+            return wrapInProjectFunction(expression) // , aggregateReference)
         }
         return super.visitGetValue(expression)
     }
 
-    private fun wrapInProjectFunction(
-        fieldExpression: IrGetValue,
-    ): IrExpression =
-        IrSingleStatementBuilder(pluginContext, Scope(fieldExpression.symbol), fieldExpression.startOffset, fieldExpression.endOffset)
+    private fun wrapInProjectFunction(fieldExpression: IrGetValue): IrExpression = IrSingleStatementBuilder(
+        pluginContext,
+        Scope(fieldExpression.symbol),
+        fieldExpression.startOffset,
+        fieldExpression.endOffset,
+    )
         .irCall(projectFunction).apply {
             // Set the return type
             logger.warn("Projecting: ${fieldExpression.dumpKotlinLike()}")
